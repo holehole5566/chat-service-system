@@ -1,6 +1,8 @@
-# Distributed Chat Service System Design
+# Distributed Chat Service System Design  
 
-## Architecture Overview
+[+] https://www.youtube.com/watch?v=wPYuRwz6Mcc&ab_channel=s09g
+
+## Architecture Overview  
 
 ```
 [ Web Client A ] --(HTTP)--+
