@@ -154,3 +154,59 @@
 - [ ] **CI/CD Pipeline**: Automated deployment
 - [ ] **Backup Strategy**: Data recovery procedures
 - [ ] **Disaster Recovery**: Multi-region deployment
+
+## Architecture Trade-offs & Design Decisions
+
+### Message Routing: HTTP vs Message Queue
+**Current Choice**: HTTP to routing service
+- ✅ **Immediate feedback**: Know if message routing succeeded/failed
+- ✅ **Simple debugging**: Direct request-response flow
+- ✅ **Lower latency**: One less hop in message path
+- ❌ **Tight coupling**: Chat servers depend on routing service availability
+- ❌ **Blocking**: Chat server waits for routing response
+
+**Alternative**: Message queue between chat server → routing service
+- ✅ **Decoupling**: Services can fail independently
+- ✅ **Non-blocking**: Fire-and-forget messaging
+- ❌ **No immediate feedback**: Can't confirm delivery success
+- ❌ **Higher complexity**: Additional queue management
+
+### Message Persistence Strategy
+**Current Choice**: No persistence (prototype)
+- ✅ **High performance**: No database blocking real-time flow
+- ❌ **Data loss**: Messages lost on server restart
+
+**Future Options**:
+1. **Routing Service Persistence**: Save before routing
+   - ✅ Guaranteed persistence
+   - ❌ Database writes block message routing
+2. **Chat Server Batching**: In-memory → batch save on disconnect
+   - ✅ High performance
+   - ❌ Data loss risk if server crashes
+3. **Background Worker**: Async queue for persistence
+   - ✅ Non-blocking + guaranteed persistence
+   - ❌ Additional complexity
+
+### Service Decomposition
+**Current Choice**: Single routing service (3 responsibilities)
+- Client-server assignment
+- Message routing
+- Online user discovery
+
+**Pros**: Simple deployment, shared state, low latency
+**Cons**: Mixed scaling needs, single point of failure
+
+**When to split**: >10k msg/sec, >100k users, different team ownership
+
+### Routing Service Scaling
+**Current Limitation**: In-memory round-robin counter
+```javascript
+let currentServerIndex = 0; // ❌ Breaks with multiple instances
+```
+
+**Scaling Solutions**:
+1. **Hash-based**: `clientId % serverCount` (stateless)
+2. **Redis counter**: `INCR server-counter` (true round-robin)
+3. **Load balancer**: nginx → multiple routing instances
+
+**Trade-off**: Consistency vs Performance vs Complexity
